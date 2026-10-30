@@ -15,7 +15,17 @@ npx silverghost list
 npx silverghost add silver-ghost
 ```
 
-`add` copies the source into `silverghost/<name>.html` in your project. You own the copy. Each file is one standalone HTML page with no build step. The whale items load three.js r128 from cdnjs.
+`add` writes two files into `./silverghost/` (change it with `--dir`). You own the copies.
+
+- `<name>.html` is a standalone page. Open it directly.
+- `<name>.js` defines a `<silverghost-<name>>` tag you can drop into any page:
+
+```html
+<script type="module" src="./silverghost/glass-blob-text.js"></script>
+<silverghost-glass-blob-text style="width: 640px"></silverghost-glass-blob-text>
+```
+
+The tag runs the page inside an iframe in a shadow root, so its styles never touch yours. It keeps a 16:9 box unless you size it. No build step. The whale items load three.js r128 from cdnjs.
 
 The registry follows the shadcn registry format: `https://thedalbee.com/silverghost/registry.json`. Set `SILVERGHOST_REGISTRY` to a URL or a local folder to use another registry.
 

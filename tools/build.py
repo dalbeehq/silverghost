@@ -12,6 +12,23 @@ ITEMS, DIST = ROOT / 'items', ROOT / 'dist'
 HOME = 'https://thedalbee.com/silverghost'
 REQUIRED = ['name', 'title', 'description', 'kind', 'credit', 'license', 'made', 'rejected']
 
+# <silverghost-이름> 태그. 단독 페이지를 그림자 DOM 속 iframe에 넣어서 페이지 CSS와 서로 섞이지 않는다.
+ELEMENT = """// Silver Ghost: __NAME__. Usage: import './__NAME__.js' then <silverghost-__NAME__></silverghost-__NAME__>
+const HTML = __HTML__;
+class SilverGhostItem extends HTMLElement {
+  connectedCallback() {
+    if (this.shadowRoot) return;
+    const root = this.attachShadow({ mode: 'open' });
+    root.innerHTML = '<style>:host{display:block;position:relative;aspect-ratio:16/9}iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}</style>';
+    const frame = document.createElement('iframe');
+    frame.title = this.getAttribute('label') || '__NAME__';
+    frame.srcdoc = HTML;
+    root.append(frame);
+  }
+}
+if (!customElements.get('silverghost-__NAME__')) customElements.define('silverghost-__NAME__', SilverGhostItem);
+"""
+
 def load(d):
     item = json.loads((d / 'item.json').read_text())
     missing = [k for k in REQUIRED if k not in item]
@@ -35,12 +52,14 @@ for d in sorted(p for p in ITEMS.iterdir() if p.is_dir()):
         skipped.append(d.name)
         continue
     n = item['name']
-    target = f'silverghost/{n}.html'
+    html = (d / f'{n}.html').read_text()
+    # 받는 파일은 둘이다. <이름>.html은 그대로 여는 단독 페이지, <이름>.js는 어느 페이지에나 끼우는 태그 <silverghost-이름>이다.
+    files = {f'silverghost/{n}.html': html, f'silverghost/{n}.js': ELEMENT.replace('__NAME__', n).replace('__HTML__', json.dumps(html, ensure_ascii=False))}
     entry = {'name': n, 'type': 'registry:file', 'title': item['title'], 'description': item['description'],
-             'files': [{'path': target, 'type': 'registry:file', 'target': target}]}
+             'files': [{'path': t, 'type': 'registry:file', 'target': t} for t in files]}
     reg.append(entry)
     full = dict(entry, **{'$schema': 'https://ui.shadcn.com/schema/registry-item.json'})
-    full['files'] = [dict(entry['files'][0], content=(d / f'{n}.html').read_text())]
+    full['files'] = [dict(f, content=files[f['path']]) for f in entry['files']]
     (DIST / 'r' / f'{n}.json').write_text(json.dumps(full, ensure_ascii=False))
     shutil.copytree(d, DIST / 'items' / n, ignore=shutil.ignore_patterns('item.json'))
     # 사이트에 올리는 사본만 검색에서 뺀다. add로 받는 사본(r/<이름>.json)은 원본 그대로다.
