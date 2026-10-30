@@ -1,0 +1,31 @@
+{
+  "name": "whale-1-lens",
+  "title": "Glyph",
+  "title_ko": "글자고래",
+  "description": "글자 15종으로 그린 고래가 헤엄칩니다. 유리 렌즈가 마우스를 따라가며 글자를 크게 보여 주고, 누르면 물결이 글자를 밀어냅니다.",
+  "kind": "dots",
+  "deps": [
+    "three@r128 (cdnjs)"
+  ],
+  "credit": "Silver Ghost. Made By Opus 5.5, Curated by HUMAN",
+  "license": "MIT",
+  "made": "2026-10-30",
+  "rejected": [
+    {
+      "file": "rejected/v1.html",
+      "poster": "rejected/v1.jpg",
+      "why": "1판 원래 색. 정본 레퍼런스에서 팔레트를 재기 전 판"
+    },
+    {
+      "file": "rejected/v2.html",
+      "poster": "rejected/v2.jpg",
+      "why": "고래 몸이 납작한 띠처럼 보였고 렌즈는 글자를 크게 보이지 않고 자리만 옮겼다"
+    }
+  ],
+  "curated": {
+    "keep": true,
+    "by": "dalbee",
+    "at": "2026-10-31",
+    "note": ""
+  }
+}

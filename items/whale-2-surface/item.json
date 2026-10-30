@@ -1,0 +1,31 @@
+{
+  "name": "whale-2-surface",
+  "title": "Breach",
+  "title_ko": "첨벙고래",
+  "description": "글자로 만든 고래가 수면을 뚫고 뛰어올랐다가 물보라를 튀기며 떨어집니다. 18초마다 되풀이되고 스크롤로 흐름을 앞뒤로 넘깁니다.",
+  "kind": "dots",
+  "deps": [
+    "three@r128 (cdnjs)"
+  ],
+  "credit": "Silver Ghost. Made By Opus 5.5, Curated by HUMAN",
+  "license": "MIT",
+  "made": "2026-10-30",
+  "rejected": [
+    {
+      "file": "rejected/v1.html",
+      "poster": "rejected/v1.jpg",
+      "why": "1판 원래 색. 정본 레퍼런스에서 팔레트를 재기 전 판"
+    },
+    {
+      "file": "rejected/v2.html",
+      "poster": "rejected/v2.jpg",
+      "why": "고래가 한자리에 떠 있기만 해서 몇 초 뒤 볼 것이 없었고 모서리 글자와 배경 그라데이션이 있었다"
+    }
+  ],
+  "curated": {
+    "keep": true,
+    "by": "dalbee",
+    "at": "2026-10-31",
+    "note": ""
+  }
+}

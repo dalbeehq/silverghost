@@ -1,0 +1,31 @@
+{
+  "name": "capture-underline",
+  "title": "Trace",
+  "title_ko": "밑줄",
+  "description": "문서 화면 속으로 카메라가 다가갑니다. 구절 아래로 밑줄이 자라고, 숫자에 박스가 씌워집니다.",
+  "kind": "highlight",
+  "deps": [
+    "gsap@3.14.2 (cdnjs)"
+  ],
+  "credit": "달비 유튜브 주간 AI 26w44 장면 S08, S38에서 뽑음. Made By Opus 5.5, Curated by HUMAN",
+  "license": "MIT",
+  "made": "2026-10-31",
+  "rejected": [
+    {
+      "file": "rejected/v1.html",
+      "poster": "rejected/v1.jpg",
+      "why": "첫 밑줄 확대가 1.9배라 제목 글자가 화면 밖으로 잘렸고, 첫 화면에 카메라 자세가 없었다"
+    },
+    {
+      "file": "rejected/v2.html",
+      "poster": "rejected/v2.jpg",
+      "why": "밑줄과 박스가 자랄 때 이징이 약해 직선 속도로 보였다"
+    }
+  ],
+  "curated": {
+    "keep": true,
+    "by": "dalbee",
+    "at": "2026-10-31",
+    "note": ""
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "silverghost",
+  "version": "0.1.0",
+  "description": "Motion components made by AI, every one looked at by a human. Made By Opus 5.5, Curated by HUMAN.",
+  "bin": {
+    "silverghost": "bin/silverghost.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "keywords": [
+    "motion",
+    "animation",
+    "shader",
+    "webgl",
+    "components",
+    "registry"
+  ],
+  "author": "dalbee",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "homepage": "https://thedalbee.com/silverghost",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dalbeehq/silverghost.git"
+  }
+}

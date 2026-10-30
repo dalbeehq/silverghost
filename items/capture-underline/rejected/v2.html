@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>capture-underline | Silver Ghost</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.14.2/gsap.min.js"></script>
+<style>
+:root { --ghost: #ede5e2; --paper: #fbf8f4; --ink: #272727; --muted: #8b8480; --accent: #0933aa; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: #121212; color: #9a9a9a; font: 14px/1.5 -apple-system, "Helvetica Neue", Arial, sans-serif; }
+body { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; padding: 12px; }
+
+/* 16:9 view. The 1920x1080 scene inside is scaled to fit by the script. */
+.view { position: relative; width: 100%; max-width: calc((100vh - 96px) * 16 / 9); aspect-ratio: 16 / 9; margin: 0 auto; overflow: hidden; background: var(--ghost); }
+.scene { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
+
+/* Stage is 280px larger than the screen on every side, so the cut never shows an empty strip. */
+.stage { position: absolute; left: -280px; top: -280px; width: 2480px; height: 1640px; background: var(--ghost); }
+.cam { position: absolute; left: 280px; top: 280px; width: 1920px; height: 1080px; transform-origin: 0 0; }
+
+.doc { position: absolute; left: 0; top: 0; width: 2200px; height: 1800px; background: var(--paper); box-shadow: 0 30px 90px rgba(39, 39, 39, 0.18); color: var(--ink); font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; }
+.doc > * { position: absolute; }
+.top { left: 120px; right: 120px; top: 90px; display: flex; justify-content: space-between; font-size: 30px; letter-spacing: 0.08em; color: var(--muted); }
+h1 { left: 120px; top: 190px; font-size: 150px; line-height: 1.08; font-weight: 900; letter-spacing: -0.03em; white-space: nowrap; }
+.sub { left: 120px; top: 560px; width: 1500px; font-size: 44px; line-height: 1.4; color: var(--muted); }
+.rule { left: 120px; top: 700px; width: 1960px; height: 4px; background: var(--ink); }
+.col { left: 120px; top: 780px; width: 900px; }
+.col h2, .figs h2 { font-size: 56px; font-weight: 900; margin-bottom: 28px; }
+.col p { font-size: 38px; line-height: 1.55; margin-bottom: 28px; }
+.figs { left: 1200px; top: 780px; width: 880px; }
+.row { display: grid; grid-template-columns: 520px 1fr; align-items: center; height: 100px; border-top: 2px solid #d9d2cc; font-size: 44px; }
+.row b { font-size: 64px; font-weight: 900; justify-self: start; }
+.note { left: 120px; top: 1380px; width: 1960px; font-size: 40px; color: var(--muted); }
+.fine { left: 120px; top: 1490px; width: 1700px; font-size: 34px; line-height: 1.5; color: var(--muted); }
+.k { display: inline-block; line-height: 1; }
+
+/* The two marks. Both grow from the left edge. */
+.hid { visibility: hidden; }
+.mark { position: absolute; background: none; transform-origin: 0 50%; }
+.mark.line { background: var(--accent); border-radius: 4px; }
+.mark.box { border: 6px solid var(--accent); border-radius: 14px; }
+
+.cap { max-width: 1200px; margin: 12px auto 0; text-align: center; overflow-wrap: anywhere; }
+.cap b { color: #e6e6e6; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="view" id="view" role="img" aria-label="A document page. The camera pushes in on a phrase and a line grows under it, then a number gets a box, then a label gets a line.">
+  <div class="scene" id="scene">
+    <div class="stage" id="stage">
+      <div class="cam" id="cam">
+        <div class="doc" id="doc">
+          <div class="top"><span>ORGANIZATION NAME</span><span>Form 00 / Page 1 of 4</span></div>
+          <h1>A headline that<br>names <span class="k" id="k1">one key phrase</span></h1>
+          <p class="sub">Placeholder subtitle. Replace every line on this page with your own screenshot or document.</p>
+          <div class="rule"></div>
+          <div class="col">
+            <h2>Section heading</h2>
+            <p>Placeholder paragraph. This text only fills space so the camera has something to move across.</p>
+            <p>Placeholder paragraph two. The camera does not read the words. It reads the box around each target.</p>
+            <p>Placeholder paragraph three. Swap in a real page and keep the three targets.</p>
+          </div>
+          <div class="figs">
+            <h2>Key figures</h2>
+            <div class="row"><span>Label A</span><b>00.0</b></div>
+            <div class="row"><span>Label B</span><b>00.0</b></div>
+            <div class="row"><span>Label C</span><b class="k" id="k2">00.0</b></div>
+            <div class="row"><span>Label D</span><b>00.0</b></div>
+            <div class="row"><span>Label E</span><b>00.0</b></div>
+          </div>
+          <p class="note">All figures are placeholders <span class="k" id="k3">covering a period of 0 months</span>. Source: your document.</p>
+          <p class="fine">Fine print placeholder. Notes, definitions and page references go here. The camera passes over this text on its way down.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>capture-underline</b> camera pushes in on a spot, then a line or box grows from the left. Loops. Add ?reduce=1 for a still frame or ?t=SECONDS to freeze at a time.</p>
+
+<script>
+(function () {
+  // Data: one row per beat. "on" is the target, "zoom" the camera scale, "mark" what grows there.
+  // Numbers come from the source video: beat 1 zoom 1.6 (scene S08), beats 2 and 3 zoom 4.0 and 2.5 (scene S38).
+  // Moves take 0.7, 0.8, 0.7 s and the marks grow in 0.25, 0.2, 0.4 s (scene S38).
+  const BEATS = [
+    { at: 1.0, on: "#k1", zoom: 1.6, d: 0.7, ease: "expo.out",     mark: { kind: "line", grow: 0.25, h: 10 } },
+    { at: 3.2, on: "#k2", zoom: 4.0, d: 0.8, ease: "power3.inOut", mark: { kind: "box",  grow: 0.2 } },
+    { at: 5.2, on: "#k3", zoom: 2.5, d: 0.7, ease: "expo.out",     mark: { kind: "line", grow: 0.4, h: 7 } },
+  ];
+  const CAM0 = [1100, 540, 0.88];            // [doc x, doc y, scale] at 0 s, the wide pose
+  const ANCHOR = { x: 960, y: 430 };          // screen point the target lands on. The lower third stays free for captions.
+  const CUT = { inDist: 240, inDur: 0.72, outDist: 120, outDur: 0.36 }; // cut-curve values
+  const DUR = 7.2;                            // scene length in seconds
+  const HOLD = 6.4;                           // the still frame for reduced motion
+
+  const $ = (s) => document.querySelector(s);
+  const doc = $("#doc"), cam = $("#cam"), stage = $("#stage"), view = $("#view"), scene = $("#scene");
+
+  const fit = () => { scene.style.transform = "scale(" + view.clientWidth / 1920 + ")"; };
+  new ResizeObserver(fit).observe(view);
+  fit();
+
+  const pose = (cx, cy, s) => ({ x: ANCHOR.x - s * cx, y: ANCHOR.y - s * cy, scale: s });
+  const rectIn = (el) => {
+    let x = 0, y = 0, e = el;
+    for (; e && e !== doc; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; }
+    return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+  };
+  const makeMark = (r, m) => {
+    const el = document.createElement("div");
+    el.className = "mark hid " + m.kind;
+    const box = m.kind === "box";
+    const pad = box ? 16 : 0;
+    el.style.left = r.x - pad + "px";
+    el.style.top = (box ? r.y - pad : r.y + r.h + 4) + "px";
+    el.style.width = r.w + 2 * pad + "px";
+    el.style.height = (box ? r.h + 2 * pad : m.h) + "px";
+    doc.appendChild(el);
+    return el;
+  };
+
+  gsap.set(cam, pose(...CAM0));               // the first painted frame already has the wide pose
+  const tl = gsap.timeline({ repeat: -1 });
+  tl.fromTo(stage, { x: CUT.inDist }, { x: 0, duration: CUT.inDur, ease: "expo.out" }, 0);
+  BEATS.forEach((b) => {
+    const r = rectIn($(b.on));
+    const el = makeMark(r, b.mark);
+    tl.to(cam, { ...pose(r.x + r.w / 2, r.y + r.h / 2, b.zoom), duration: b.d, ease: b.ease }, b.at);
+    tl.set(el, { visibility: "inherit" }, b.at);
+    tl.fromTo(el, { scaleX: 0 }, { scaleX: 1, duration: b.mark.grow, ease: "power2.out" }, b.at);
+  });
+  tl.to(stage, { x: -CUT.outDist, duration: CUT.outDur, ease: "expo.in" }, DUR - CUT.outDur);
+  tl.set({}, {}, DUR);
+
+  const q = new URLSearchParams(location.search);
+  if (q.get("reduce") === "1" || matchMedia("(prefers-reduced-motion: reduce)").matches) tl.pause(HOLD);
+  else if (q.has("t")) tl.pause(+q.get("t"));
+  window.__tl = tl;
+})();
+</script>
+</body>
+</html>

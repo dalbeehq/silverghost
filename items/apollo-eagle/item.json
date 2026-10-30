@@ -1,0 +1,29 @@
+{
+  "name": "apollo-eagle",
+  "title": "Lander",
+  "title_ko": "착륙선",
+  "description": "아폴로 11 착륙선 사진을 점 24000개로 그렸습니다. 마우스를 따라 돌고, 누르면 점이 흩날립니다.",
+  "kind": "dots",
+  "deps": [],
+  "credit": "사진: NASA, Apollo 11 Lunar Module Eagle, 퍼블릭 도메인",
+  "license": "MIT (코드). 사진은 퍼블릭 도메인",
+  "made": "2026-10-31",
+  "rejected": [
+    {
+      "file": "rejected/v1.html",
+      "poster": "rejected/v1.jpg",
+      "why": "세로로 긴 사진이라 그림이 화면 위아래로 넘쳤다"
+    },
+    {
+      "file": "rejected/v2.html",
+      "poster": "rejected/v2.jpg",
+      "why": "화면 좌우 상단에 글자가 있었고 배경에 그라데이션이 깔려 있었다"
+    }
+  ],
+  "curated": {
+    "keep": true,
+    "by": "dalbee",
+    "at": "2026-10-31",
+    "note": ""
+  }
+}

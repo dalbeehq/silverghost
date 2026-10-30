@@ -1,0 +1,24 @@
+{
+  "name": "liquid-metal",
+  "title": "Mercury",
+  "title_ko": "쇳물",
+  "description": "흐르는 금속 표면에 주변 색이 비칩니다. 마우스를 대면 그 자리가 솟아오릅니다.",
+  "kind": "glass",
+  "deps": [],
+  "credit": "Silver Ghost. Made By Opus 5.5, Curated by HUMAN",
+  "license": "MIT",
+  "made": "2026-10-30",
+  "rejected": [
+    {
+      "file": "rejected/v1.html",
+      "poster": "rejected/v1.jpg",
+      "why": "1판 원래 색. 정본 레퍼런스에서 팔레트를 재기 전 판"
+    }
+  ],
+  "curated": {
+    "keep": true,
+    "by": "dalbee",
+    "at": "2026-10-31",
+    "note": ""
+  }
+}

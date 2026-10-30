@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아스키 고래 2 수면</title>
+<style>
+html,body{margin:0;background:#0f1316;color:#9eaab5;font:13px ui-monospace,Menlo,monospace}
+body{height:520vh}
+canvas{display:block;position:fixed;inset:0}
+#t{position:fixed;left:28px;top:24px;font:bold 22px ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#e9f4f9;white-space:pre;min-height:1.3em}
+#h{position:fixed;left:28px;bottom:22px;color:#8ca1ac;white-space:pre}
+#p{position:fixed;right:28px;bottom:22px;color:#8ca1ac}
+</style></head><body>
+<canvas id="c"></canvas><div id="t"></div><div id="h">스크롤: 물속에서 수면으로 올라온다   마우스: 고래가 고개를 돌린다</div><div id="p"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ascii core: renders a three scene into a tiny target, returns luminance grid, draws glyphs on a 2D canvas */
+const PAL={"bg": "#0f1316", "navy": "#242b32", "teal": "#4ca4c8", "tealHi": "#62c1db", "sage": "#9eaab5", "sageHi": "#c4cfd7", "pale": "#e9f4f9", "purple": "#0b4b8f", "purpleHi": "#3b8cb9"};
+const RAMP=' .,:;-~=+*xo#%@';
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches||/[?&]reduce=1/.test(location.search);
+function makeAscii(canvas,scene,camera){
+  const ctx=canvas.getContext('2d');
+  const gl=new THREE.WebGLRenderer({antialias:false,alpha:true});
+  gl.setClearColor(0x000000,0);
+  const S={cols:0,rows:0,cw:8,ch:14,fs:12,lum:null,alp:null,rt:null,buf:null,dpr:1};
+  S.resize=function(){
+    const dpr=Math.min(window.devicePixelRatio||1,2);S.dpr=dpr;
+    const W=innerWidth,H=innerHeight;
+    canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+    canvas.style.width=W+'px';canvas.style.height=H+'px';
+    S.fs=Math.max(8,Math.min(14,Math.round(W/150)));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.font='bold '+S.fs+'px ui-monospace,Menlo,Consolas,monospace';
+    ctx.textBaseline='top';
+    S.cw=ctx.measureText('M').width;S.ch=S.fs*1.18;
+    S.cols=Math.floor(W/S.cw);S.rows=Math.floor(H/S.ch);
+    if(S.rt)S.rt.dispose();
+    S.rt=new THREE.WebGLRenderTarget(S.cols,S.rows,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat});
+    S.buf=new Uint8Array(S.cols*S.rows*4);
+    S.lum=new Float32Array(S.cols*S.rows);S.alp=new Float32Array(S.cols*S.rows);
+    gl.setSize(S.cols,S.rows,false);gl.setPixelRatio(1);
+    camera.aspect=W/H;camera.updateProjectionMatrix();
+  };
+  S.render=function(){
+    gl.setRenderTarget(S.rt);gl.clear();gl.render(scene,camera);
+    gl.readRenderTargetPixels(S.rt,0,0,S.cols,S.rows,S.buf);
+    gl.setRenderTarget(null);
+    const c=S.cols,r=S.rows;
+    for(let y=0;y<r;y++){
+      const sy=r-1-y;
+      for(let x=0;x<c;x++){
+        const k=(sy*c+x)*4,o=y*c+x;
+        S.alp[o]=S.buf[k+3]/255;
+        S.lum[o]=Math.pow((S.buf[k]*0.3+S.buf[k+1]*0.59+S.buf[k+2]*0.11)/255,1.15)*1.1;
+      }
+    }
+  };
+  S.clear=function(color){ctx.fillStyle=color||PAL.bg;ctx.fillRect(0,0,innerWidth,innerHeight);if(!color){const R=Math.max(innerWidth,innerHeight)*0.33;let g=ctx.createRadialGradient(innerWidth*.08,innerHeight*1.05,0,innerWidth*.08,innerHeight*1.05,R);g.addColorStop(0,'rgba(11,75,143,0.16)');g.addColorStop(1,'rgba(11,75,143,0)');ctx.fillStyle=g;ctx.fillRect(0,0,innerWidth,innerHeight);g=ctx.createRadialGradient(innerWidth*.96,-innerHeight*.05,0,innerWidth*.96,-innerHeight*.05,R*.9);g.addColorStop(0,'rgba(98,193,219,0.14)');g.addColorStop(1,'rgba(98,193,219,0)');ctx.fillStyle=g;ctx.fillRect(0,0,innerWidth,innerHeight);g=ctx.createRadialGradient(innerWidth*.52,innerHeight*.62,0,innerWidth*.52,innerHeight*.62,Math.max(innerWidth,innerHeight)*.4);g.addColorStop(0,'rgba(68,83,97,0.75)');g.addColorStop(1,'rgba(68,83,97,0)');ctx.fillStyle=g;ctx.fillRect(0,0,innerWidth,innerHeight);}last='';};
+  let last='';
+  S.put=function(x,y,ch,color){
+    if(ch===' ')return;
+    if(color!==last){ctx.fillStyle=color;last=color;}
+    ctx.fillText(ch,x*S.cw,y*S.ch);
+  };
+  S.whaleColor=function(l){
+    return l<0.22?PAL.purple:l<0.4?'#2e7aad':l<0.58?PAL.teal:l<0.75?PAL.tealHi:l<0.9?PAL.sage:PAL.sageHi;
+  };
+  S.glyph=function(l){const i=Math.max(1,Math.min(RAMP.length-1,Math.floor(Math.pow(l,0.8)*RAMP.length)));return RAMP[i];};
+  return S;
+}
+/* letters swap one by one, no opacity */
+function scrambleReveal(el,text,step){
+  if(REDUCE){el.textContent=text;return {done:true,stop(){}};}
+  const pool='01#%*+=<>/\\|xo~';let i=0,tick=0,stop=false;
+  const iv=setInterval(()=>{
+    if(stop){clearInterval(iv);return;}
+    tick++;
+    if(tick%(step||2)===0)i++;
+    let s='';
+    for(let k=0;k<text.length;k++){
+      if(k<i)s+=text[k];
+      else if(k<i+3&&text[k]!==' ')s+=pool[(Math.random()*pool.length)|0];
+      else s+=' ';
+    }
+    el.textContent=s;
+    if(i>=text.length){el.textContent=text;clearInterval(iv);}
+  },45);
+  return {stop(){stop=true;}};
+}
+
+/* procedural whale (three r128). head faces +x. units: body length 4 */
+function makeWhale(THREE){
+  const L=4, SEG=70, RAD=28;
+  const prof=u=>0.72*Math.pow(Math.sin(Math.PI*Math.pow(u,0.72)),0.85)*(1-0.55*u)*(u>0.62?Math.max(0.25,1-(u-0.62)*1.9):1);
+  const geo=new THREE.BufferGeometry();
+  const n=(SEG+1)*(RAD+1);
+  const pos=new Float32Array(n*3), base=new Float32Array(n*3);
+  const idx=[];
+  for(let i=0;i<=SEG;i++){
+    const u=i/SEG;
+    for(let j=0;j<=RAD;j++){
+      const th=j/RAD*Math.PI*2, r=prof(u);
+      const k=(i*(RAD+1)+j)*3;
+      base[k]=(0.5-u)*L;
+      base[k+1]=Math.cos(th)*r*(Math.sin(th)<0?0.8:0.9)*(Math.cos(th)<0?0.9:1);
+      base[k+2]=Math.sin(th)*r;
+    }
+  }
+  for(let i=0;i<SEG;i++)for(let j=0;j<RAD;j++){
+    const a=i*(RAD+1)+j,b=a+RAD+1;
+    idx.push(a,b,a+1,b,b+1,a+1);
+  }
+  geo.setIndex(idx);
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const wave=(x,t)=>{const u=(0.5-x/L);return 0.24*u*u*Math.sin(5.2*u-2.6*t)};
+  function update(t){
+    for(let k=0;k<base.length;k+=3){
+      pos[k]=base[k];pos[k+1]=base[k+1]+wave(base[k],t);pos[k+2]=base[k+2]+0.05*Math.sin(2.0*(0.5-base[k]/L)-1.3*t)*(0.5-base[k]/L);
+    }
+    geo.attributes.position.needsUpdate=true;geo.computeVertexNormals();
+  }
+  const group=new THREE.Group();
+  const body=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide}));
+  group.add(body);
+  const mat=()=>new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide});
+  const fluke=new THREE.Mesh(new THREE.SphereGeometry(1,20,10),mat());
+  fluke.scale.set(0.2,0.03,0.95);group.add(fluke);
+  const finL=new THREE.Mesh(new THREE.SphereGeometry(1,16,8),mat()),finR=new THREE.Mesh(new THREE.SphereGeometry(1,16,8),mat());
+  finL.scale.set(0.5,0.04,0.17);finR.scale.set(0.5,0.04,0.17);group.add(finL,finR);
+  function animate(t){
+    update(t);
+    const xe=-L/2, ye=wave(xe,t), dx=0.02, slope=(wave(xe+dx,t)-wave(xe-dx,t))/(2*dx);
+    fluke.position.set(xe-0.04,ye,0);fluke.rotation.z=Math.atan(slope)*-1+0;
+    const fx=(0.5-0.34)*L, fy=-0.32, flap=0.35*Math.sin(t*1.6);
+    const y0=fy+wave(fx,t)*0.8;
+    finL.position.set(fx,y0,0.5);finL.rotation.set(0.5+flap,0.2,-0.5);
+    finR.position.set(fx,y0,-0.5);finR.rotation.set(-0.5-flap,-0.2,-0.5);
+  }
+  animate(0);
+  /* surface samples for the point-cloud version */
+  function samplePoints(count){
+    const out=new Float32Array(count*3);let c=0;
+    while(c<count){
+      const roll=Math.random();
+      if(roll<0.82){
+        const u=Math.random(),th=Math.random()*Math.PI*2,r=prof(u);
+        out[c*3]=(0.5-u)*L;out[c*3+1]=Math.cos(th)*r*(Math.sin(th)<0?0.8:0.9);out[c*3+2]=Math.sin(th)*r;
+      }else if(roll<0.92){
+        const a=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random());
+        out[c*3]=-L/2-0.04+Math.cos(a)*0.2*rr;out[c*3+1]=Math.sin(a)*0.03*rr;out[c*3+2]=Math.sin(a)*0.95*rr;
+      }else{
+        const s=Math.random()<0.5?1:-1,a=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random());
+        out[c*3]=(0.5-0.34)*L+Math.cos(a)*0.5*rr;out[c*3+1]=-0.32+Math.sin(a)*0.04*rr-0.2*rr;out[c*3+2]=s*(0.5+Math.sin(a)*0.17*rr);
+      }
+      c++;
+    }
+    return {pos:out,wave};
+  }
+  return {group,animate,samplePoints,wave,L};
+}
+
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(32,1,0.1,50);
+camera.position.set(0,2.4,6.9);camera.lookAt(0,0,0);
+scene.add(new THREE.AmbientLight(0xffffff,0.14));
+const dl=new THREE.DirectionalLight(0xffffff,0.5);dl.position.set(-2,4,3);scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xffffff,0.1);dl2.position.set(3,-2,-2);scene.add(dl2);
+const whale=makeWhale(THREE);scene.add(whale.group);
+const S=makeAscii(document.getElementById('c'),scene,camera);S.resize();
+addEventListener('resize',()=>{S.resize();if(REDUCE)frame(0);});
+const mouse={nx:0.2,ny:0};
+addEventListener('mousemove',e=>{mouse.nx=e.clientX/innerWidth*2-1;mouse.ny=e.clientY/innerHeight*2-1;});
+const ease=x=>x<0?0:x>1?1:x*x*(3-2*x);
+const CAPS=[[0,0.28,'수면 아래. 아직 시장에 닿지 않은 작업.'],[0.28,0.62,'올라간다.'],[0.62,1.01,'공개.']];
+const capEl=document.getElementById('t');let capIdx=-1,capJob=null;
+function setCap(i){if(i===capIdx)return;capIdx=i;if(capJob)capJob.stop();capEl.textContent='';capJob=scrambleReveal(capEl,CAPS[i][2],2);}
+function noise(x,y,t){return Math.sin(x*0.19+t*0.9+Math.sin(y*0.37+t*0.6)*1.6)+Math.sin(x*0.07-y*0.23+t*0.5);}
+const WAVE_UP='~-=';const STARS=[];for(let i=0;i<120;i++)STARS.push({x:Math.random(),y:Math.random(),c:Math.random()<0.3?'*':'.'});
+let ys=0;
+function scrollP(){const m=document.documentElement.scrollHeight-innerHeight;return m>0?Math.min(1,Math.max(0,scrollY/m)):0;}
+const T0=performance.now();
+let smooth=null;
+function frame(now){
+  const t=REDUCE?2.0:(now-T0)/1000;
+  let p=scrollP();
+  if(REDUCE&&!/[?&]p=/.test(location.search))p=0.55;
+  const mq=location.search.match(/[?&]p=([0-9.]+)/);if(mq)p=parseFloat(mq[1]);
+  if(smooth===null)smooth=p;smooth+=(p-smooth)*(REDUCE?1:0.12);p=smooth;
+  const C=S.cols,R=S.rows,asp=S.ch/S.cw;
+  /* screen space (0 top, 1 bottom): whale rises, waterline drops */
+  const e=ease(p);
+  const wy=0.78-0.68*e;               // whale center
+  const lineBase=-0.35+1.0*ease(p/0.9); // waterline
+  const wx=0.5+0.02*Math.sin(t*0.4);
+  camera.updateMatrixWorld();
+  /* map screen to world: vertical half-height at z=0 */
+  const hh=Math.tan(THREE.MathUtils.degToRad(16))*7.4,hw=hh*camera.aspect;
+  whale.group.position.set((wx-0.5)*2*hw*0.5,(0.5-wy)*2*hh,0);
+  const climb=Math.cos(Math.PI*0.5*Math.min(1,p*1.15));
+  const bank=(REDUCE?0.1:mouse.nx*0.35);
+  whale.group.rotation.set(0,-0.15-mouse.nx*0.3,0.55*(1-Math.abs(e*2-1)*0.2)*climb-0.1+(-mouse.ny*0.15)+bank*0.1);
+  whale.group.scale.setScalar(Math.min(1,camera.aspect/1.6)*1.05);
+  whale.animate(t*(1.0+1.2*e));
+  S.render();
+  S.clear();
+  for(let x=0;x<C;x++){
+    const surf=(lineBase+0.015*Math.sin(x*0.21+t*1.7)+0.01*Math.sin(x*0.07-t))*R;
+    for(let y=0;y<R;y++){
+      const o=y*C+x;
+      if(S.alp[o]>0.5){
+        const l=S.lum[o],above=y<surf;
+        const L=Math.min(1,l*1.05+0.14);
+        S.put(x,y,S.glyph(L),above?(L>0.75?PAL.pale:PAL.sageHi):S.whaleColor(L));
+        continue;
+      }
+      if(y<surf-1){
+        /* sky: sparse stars and one faint haze row set */
+        const sx=STARS[(x*7+y*13)%STARS.length];
+        if((x*31+y*17)%23===0)S.put(x,y,sx.c,((x+y)&3)===0?PAL.purpleHi:PAL.purple);
+      }else if(y<surf+1){
+        S.put(x,y,'~',PAL.sageHi);
+      }else{
+        const depth=(y-surf)/Math.max(1,R);
+        const n=noise(x,y*asp*1.6,t);
+        const ch=n>1.55?'~':n>1.0?'-':n>0.45?'.':' ';
+        S.put(x,y,ch,depth<0.12?PAL.teal:depth<0.35?'#0c3a6b':depth<0.7?'#0d2c4c':'#0e2134');
+      }
+    }
+  }
+  /* splash: when the whale crosses the line, spray glyphs jump up from the line */
+  const whaleTopRow=wy*R-R*0.12,lineRow=lineBase*R;
+  if(Math.abs(whaleTopRow-lineRow)<R*0.1&&!REDUCE){
+    for(let k=0;k<26;k++){
+      const x=Math.floor(wx*C+(Math.random()-0.5)*C*0.35),y=Math.floor(lineRow-Math.random()*R*0.14);
+      S.put(x,y,Math.random()<0.5?'\'':'`',PAL.pale);
+    }
+  }
+  document.getElementById('p').textContent=Math.round(p*100)+'%';
+  setCap(p<CAPS[0][1]?0:p<CAPS[1][1]?1:2);
+  if(!REDUCE)requestAnimationFrame(frame);
+}
+if(REDUCE){frame(0);setCap(2);}else requestAnimationFrame(frame);
+</script></body></html>

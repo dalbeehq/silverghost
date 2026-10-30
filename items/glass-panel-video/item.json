@@ -1,0 +1,24 @@
+{
+  "name": "glass-panel-video",
+  "title": "Frost",
+  "title_ko": "서리유리",
+  "description": "흐린 유리 패널 두 개 아래로 움직이는 도형과 글자가 번져 비칩니다. 마우스를 움직이면 패널이 따라갑니다.",
+  "kind": "glass",
+  "deps": [],
+  "credit": "Silver Ghost. Made By Opus 5.5, Curated by HUMAN",
+  "license": "MIT",
+  "made": "2026-10-30",
+  "rejected": [
+    {
+      "file": "rejected/v1.html",
+      "poster": "rejected/v1.jpg",
+      "why": "1판 원래 색. 정본 레퍼런스에서 팔레트를 재기 전 판"
+    }
+  ],
+  "curated": {
+    "keep": true,
+    "by": "dalbee",
+    "at": "2026-10-31",
+    "note": ""
+  }
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:{{default}}radial-gradient(50vmax 50vmax at 10% 108%,rgba(11,75,143,0.18),transparent 70%) no-repeat,radial-gradient(44vmax 44vmax at 94% -6%,rgba(98,193,219,0.12),transparent 70%) no-repeat,#0f1316{{/default}}{{black}}#000{{/black}};color:#9eaab5;font:13px ui-monospace,Menlo,monospace}
+canvas{display:block;position:fixed;inset:0;touch-action:none}
+{{default}}#t{position:fixed;left:28px;top:24px;font:bold 22px ui-monospace,Menlo,monospace;letter-spacing:.18em;color:#e9f4f9;white-space:pre}
+#s{position:fixed;left:28px;top:56px;font:12px ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#8ca1ac;white-space:pre}
+#h{position:fixed;left:28px;right:28px;bottom:22px;color:#8ca1ac;font-size:12px;line-height:1.6}
+#c2{position:fixed;right:28px;top:26px;color:#5d6f7a;font-size:11px;text-align:right;line-height:1.5}
+@media (max-width:600px){#t{left:16px;top:18px;font-size:18px}#s{left:16px;top:46px}#h{left:16px;right:16px;bottom:16px}#c2{display:none}}{{/default}}
+</style></head><body>
+<canvas id="c"></canvas>
+{{default}}<div id="t"></div><div id="s">Made By Opus 5.5, Curated by HUMAN</div>
+<div id="c2">__CREDIT__</div>
+<div id="h">마우스: 형태가 따라 돌고 커서 둘레의 점이 비켜난다&nbsp;&nbsp;&nbsp;누르고 있기: 점이 바람에 뒤로 흩날린다</div>{{/default}}
+<script id="pts" type="application/json">__POINTS__</script>
+<script>
+(function(){
+"use strict";
+var REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches||/[?&]reduce=1/.test(location.search);
+var D=JSON.parse(document.getElementById('pts').textContent),N=D.n,P=D.p;
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+/* 점마다: 집 좌표(hx,hy), 깊이 z, 밝기 b, 윤곽 e, 지금 위치와 속도 */
+var hx=new Float32Array(N),hy=new Float32Array(N),hz=new Float32Array(N),br=new Float32Array(N),
+    x=new Float32Array(N),y=new Float32Array(N),vx=new Float32Array(N),vy=new Float32Array(N),
+    ph=new Float32Array(N),wind=new Float32Array(N),delay=new Float32Array(N),sz=new Float32Array(N),bucket=new Uint8Array(N);
+var COL=['#0b4b8f','#3b8cb9','#62c1db','#c4cfd7','#e9f4f9'];
+var rnd=(function(s){return function(){s=(s*16807)%2147483647;return s/2147483647}})(20261030);
+for(var i=0;i<N;i++){
+  hx[i]=P[i*4]/1000;hy[i]=P[i*4+1]/1000;var b=P[i*4+2]/99,e=P[i*4+3]/99;br[i]=b;
+  hz[i]=(b-0.5)*0.08+(rnd()-0.5)*0.03;
+  ph[i]=rnd()*6.283;wind[i]=0.4+rnd()*1.6;
+  delay[i]=(hx[i]+1)*0.55+rnd()*0.35;
+  var l=Math.min(1,b*0.75+e*0.45);
+  bucket[i]=l<0.2?0:l<0.38?1:l<0.58?2:l<0.8?3:4;
+  sz[i]=1.1+l*1.7;
+}
+/* 색 묶음별로 순서를 잡아 두면 fillStyle을 다섯 번만 바꾼다 */
+var order=[];for(var k=0;k<5;k++)order.push([]);
+for(i=0;i<N;i++)order[bucket[i]].push(i);
+var W=0,H=0,dpr=1,scale=1,cx=0,cy=0;
+function resize(){
+  dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.width=W+'px';cv.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  scale=Math.min(W*(W<600?0.47:0.42),H*0.34/D.aspect);cx=W*0.5;cy=H*0.53;
+}
+resize();addEventListener('resize',resize);
+/* 처음 자리: 화면 왼쪽 밖 안개. 바람을 타고 들어와 차 모양으로 선다 */
+for(i=0;i<N;i++){x[i]=cx+(-1.6-rnd()*1.4)*scale;y[i]=cy+(hy[i]+(rnd()-0.5)*0.5)*scale}
+if(REDUCE)for(i=0;i<N;i++){x[i]=cx+hx[i]*scale;y[i]=cy+hy[i]*scale}
+var mx=-9999,my=-9999,tmx=0,rot=0,trot=0,hold=0,down=false;
+addEventListener('pointermove',function(e){mx=e.clientX;my=e.clientY;trot=((e.clientX/W)-0.5)*0.5;tmx=((e.clientY/H)-0.5)*0.2});
+addEventListener('pointerleave',function(){mx=my=-9999});
+addEventListener('pointerdown',function(e){down=true;mx=e.clientX;my=e.clientY});
+addEventListener('pointerup',function(){down=false});
+/* 감싼 페이지가 스크롤 진행값(0~1)을 보내면 그만큼 바람에 날리고 돈다: postMessage({silverghost:'scroll',p}) */
+var sp=0;addEventListener('message',function(e){var d=e.data;if(d&&d.silverghost==='scroll')sp=Math.max(0,Math.min(1,+d.p||0))});addEventListener('pointercancel',function(){down=false});
+var t0=performance.now(),tilt=0;
+function frame(now){
+  var t=(now-t0)/1000;
+  rot+=(trot+sp*0.7-rot)*0.06;tilt+=(tmx-tilt)*0.06;
+  var want=Math.max(down?1:0,sp*1.3);hold+=(want-hold)*(want>hold?0.035:0.08);
+  var cr=Math.cos(rot),sr=Math.sin(rot),ct=Math.cos(tilt),st=Math.sin(tilt),R=Math.max(70,scale*0.16),R2=R*R;
+  ctx.clearRect(0,0,W,H);
+  for(i=0;i<N;i++){
+    var on=REDUCE?1:Math.min(1,Math.max(0,(t-delay[i])*1.4));
+    /* 3D 회전: y축 회전 뒤 x축 기울기, 원근 */
+    var X=hx[i]*cr+hz[i]*sr,Z=-hx[i]*sr+hz[i]*cr,Y=hy[i]*ct-Z*st;Z=hy[i]*st+Z*ct;
+    var pz=1/(1+Z*0.25);
+    var shim=REDUCE?0:0.0012*Math.sin(t*1.7+ph[i]);
+    var tx=cx+(X*pz+shim)*scale,ty=cy+(Y*pz+shim*0.6)*scale;
+    /* 누르고 있으면 바람: 점이 뒤(오른쪽)로 길게 날린다 */
+    if(hold>0.001){tx+=hold*wind[i]*scale*0.9*(0.6+0.4*Math.sin(t*2+ph[i]));ty+=hold*Math.sin(ph[i]*3+t*1.3)*scale*0.06}
+    if(on<1){var f=1-Math.pow(1-on,3);tx=x[i]+(tx-x[i])*f*0.12;ty=y[i]+(ty-y[i])*f*0.12;x[i]=tx;y[i]=ty;vx[i]=vy[i]=0;continue}
+    /* 커서 둘레 점은 비켜난다 */
+    var dx=x[i]-mx,dy=y[i]-my,d2=dx*dx+dy*dy;
+    if(d2<R2&&!REDUCE){var d=Math.sqrt(d2)+0.001,push=(1-d/R)*(1-d/R)*6;vx[i]+=dx/d*push;vy[i]+=dy/d*push}
+    vx[i]=(vx[i]+(tx-x[i])*0.07)*0.8;vy[i]=(vy[i]+(ty-y[i])*0.07)*0.8;
+    x[i]+=vx[i];y[i]+=vy[i];
+  }
+  for(var k=0;k<5;k++){
+    ctx.fillStyle=COL[k];var o=order[k];
+    ctx.beginPath();for(var j=0;j<o.length;j++){i=o[j];var r=sz[i]*0.5;ctx.moveTo(x[i]+r,y[i]);ctx.arc(x[i],y[i],r,0,6.2832)}ctx.fill();
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+{{default}}/* 제목 글자는 하나씩 바뀌며 선다 */
+var T=document.title.toUpperCase(),el=document.getElementById('t');
+if(REDUCE){el.textContent=T}else{var n=0,pool='01#%*+=<>/\\|xo~',iv=setInterval(function(){n+=0.5;var s='';for(var q=0;q<T.length;q++)s+=q<n?T[q]:(q<n+3&&T[q]!==' '?pool[(Math.random()*pool.length)|0]:' ');el.textContent=s;if(n>=T.length){el.textContent=T;clearInterval(iv)}},45)}{{/default}}
+})();
+</script>
+</body></html>

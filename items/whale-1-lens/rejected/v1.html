@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아스키 고래 1 렌즈</title>
+<style>
+html,body{margin:0;height:100%;background:#0a1322;overflow:hidden;color:#b7cbb2;font:13px ui-monospace,Menlo,monospace}
+canvas{display:block;position:fixed;inset:0;cursor:none}
+#t{position:fixed;left:28px;top:24px;font:bold 22px ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#dbe8dc;white-space:pre}
+#h{position:fixed;left:28px;bottom:22px;color:#6f8f8a;white-space:pre}
+</style></head><body>
+<canvas id="c"></canvas><div id="t"></div><div id="h">마우스: 렌즈가 따라온다   클릭: 물결</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ascii core: renders a three scene into a tiny target, returns luminance grid, draws glyphs on a 2D canvas */
+const PAL={bg:'#0a1322',navy:'#17304e',teal:'#2f7f86',tealHi:'#4fa3a5',sage:'#8aa58a',sageHi:'#b7cbb2',pale:'#dbe8dc',purple:'#4b3a78',purpleHi:'#7a63a8'};
+const RAMP=' .,:;-~=+*xo#%@';
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches||/[?&]reduce=1/.test(location.search);
+function makeAscii(canvas,scene,camera){
+  const ctx=canvas.getContext('2d');
+  const gl=new THREE.WebGLRenderer({antialias:false,alpha:true});
+  gl.setClearColor(0x000000,0);
+  const S={cols:0,rows:0,cw:8,ch:14,fs:12,lum:null,alp:null,rt:null,buf:null,dpr:1};
+  S.resize=function(){
+    const dpr=Math.min(window.devicePixelRatio||1,2);S.dpr=dpr;
+    const W=innerWidth,H=innerHeight;
+    canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+    canvas.style.width=W+'px';canvas.style.height=H+'px';
+    S.fs=Math.max(8,Math.min(14,Math.round(W/150)));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.font='bold '+S.fs+'px ui-monospace,Menlo,Consolas,monospace';
+    ctx.textBaseline='top';
+    S.cw=ctx.measureText('M').width;S.ch=S.fs*1.18;
+    S.cols=Math.floor(W/S.cw);S.rows=Math.floor(H/S.ch);
+    if(S.rt)S.rt.dispose();
+    S.rt=new THREE.WebGLRenderTarget(S.cols,S.rows,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat});
+    S.buf=new Uint8Array(S.cols*S.rows*4);
+    S.lum=new Float32Array(S.cols*S.rows);S.alp=new Float32Array(S.cols*S.rows);
+    gl.setSize(S.cols,S.rows,false);gl.setPixelRatio(1);
+    camera.aspect=W/H;camera.updateProjectionMatrix();
+  };
+  S.render=function(){
+    gl.setRenderTarget(S.rt);gl.clear();gl.render(scene,camera);
+    gl.readRenderTargetPixels(S.rt,0,0,S.cols,S.rows,S.buf);
+    gl.setRenderTarget(null);
+    const c=S.cols,r=S.rows;
+    for(let y=0;y<r;y++){
+      const sy=r-1-y;
+      for(let x=0;x<c;x++){
+        const k=(sy*c+x)*4,o=y*c+x;
+        S.alp[o]=S.buf[k+3]/255;
+        S.lum[o]=Math.pow((S.buf[k]*0.3+S.buf[k+1]*0.59+S.buf[k+2]*0.11)/255,1.15)*1.1;
+      }
+    }
+  };
+  S.clear=function(color){ctx.fillStyle=color||PAL.bg;ctx.fillRect(0,0,innerWidth,innerHeight);last='';};
+  let last='';
+  S.put=function(x,y,ch,color){
+    if(ch===' ')return;
+    if(color!==last){ctx.fillStyle=color;last=color;}
+    ctx.fillText(ch,x*S.cw,y*S.ch);
+  };
+  S.whaleColor=function(l){
+    return l<0.22?PAL.purple:l<0.4?'#2b4f7a':l<0.58?PAL.teal:l<0.75?PAL.tealHi:l<0.9?PAL.sage:PAL.sageHi;
+  };
+  S.glyph=function(l){const i=Math.max(1,Math.min(RAMP.length-1,Math.floor(Math.pow(l,0.8)*RAMP.length)));return RAMP[i];};
+  return S;
+}
+/* letters swap one by one, no opacity */
+function scrambleReveal(el,text,step){
+  if(REDUCE){el.textContent=text;return {done:true,stop(){}};}
+  const pool='01#%*+=<>/\\|xo~';let i=0,tick=0,stop=false;
+  const iv=setInterval(()=>{
+    if(stop){clearInterval(iv);return;}
+    tick++;
+    if(tick%(step||2)===0)i++;
+    let s='';
+    for(let k=0;k<text.length;k++){
+      if(k<i)s+=text[k];
+      else if(k<i+3&&text[k]!==' ')s+=pool[(Math.random()*pool.length)|0];
+      else s+=' ';
+    }
+    el.textContent=s;
+    if(i>=text.length){el.textContent=text;clearInterval(iv);}
+  },45);
+  return {stop(){stop=true;}};
+}
+
+/* procedural whale (three r128). head faces +x. units: body length 4 */
+function makeWhale(THREE){
+  const L=4, SEG=70, RAD=28;
+  const prof=u=>0.72*Math.pow(Math.sin(Math.PI*Math.pow(u,0.72)),0.85)*(1-0.55*u)*(u>0.62?Math.max(0.25,1-(u-0.62)*1.9):1);
+  const geo=new THREE.BufferGeometry();
+  const n=(SEG+1)*(RAD+1);
+  const pos=new Float32Array(n*3), base=new Float32Array(n*3);
+  const idx=[];
+  for(let i=0;i<=SEG;i++){
+    const u=i/SEG;
+    for(let j=0;j<=RAD;j++){
+      const th=j/RAD*Math.PI*2, r=prof(u);
+      const k=(i*(RAD+1)+j)*3;
+      base[k]=(0.5-u)*L;
+      base[k+1]=Math.cos(th)*r*(Math.sin(th)<0?0.8:0.9)*(Math.cos(th)<0?0.9:1);
+      base[k+2]=Math.sin(th)*r;
+    }
+  }
+  for(let i=0;i<SEG;i++)for(let j=0;j<RAD;j++){
+    const a=i*(RAD+1)+j,b=a+RAD+1;
+    idx.push(a,b,a+1,b,b+1,a+1);
+  }
+  geo.setIndex(idx);
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const wave=(x,t)=>{const u=(0.5-x/L);return 0.24*u*u*Math.sin(5.2*u-2.6*t)};
+  function update(t){
+    for(let k=0;k<base.length;k+=3){
+      pos[k]=base[k];pos[k+1]=base[k+1]+wave(base[k],t);pos[k+2]=base[k+2]+0.05*Math.sin(2.0*(0.5-base[k]/L)-1.3*t)*(0.5-base[k]/L);
+    }
+    geo.attributes.position.needsUpdate=true;geo.computeVertexNormals();
+  }
+  const group=new THREE.Group();
+  const body=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide}));
+  group.add(body);
+  const mat=()=>new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide});
+  const fluke=new THREE.Mesh(new THREE.SphereGeometry(1,20,10),mat());
+  fluke.scale.set(0.2,0.03,0.95);group.add(fluke);
+  const finL=new THREE.Mesh(new THREE.SphereGeometry(1,16,8),mat()),finR=new THREE.Mesh(new THREE.SphereGeometry(1,16,8),mat());
+  finL.scale.set(0.5,0.04,0.17);finR.scale.set(0.5,0.04,0.17);group.add(finL,finR);
+  function animate(t){
+    update(t);
+    const xe=-L/2, ye=wave(xe,t), dx=0.02, slope=(wave(xe+dx,t)-wave(xe-dx,t))/(2*dx);
+    fluke.position.set(xe-0.04,ye,0);fluke.rotation.z=Math.atan(slope)*-1+0;
+    const fx=(0.5-0.34)*L, fy=-0.32, flap=0.35*Math.sin(t*1.6);
+    const y0=fy+wave(fx,t)*0.8;
+    finL.position.set(fx,y0,0.5);finL.rotation.set(0.5+flap,0.2,-0.5);
+    finR.position.set(fx,y0,-0.5);finR.rotation.set(-0.5-flap,-0.2,-0.5);
+  }
+  animate(0);
+  /* surface samples for the point-cloud version */
+  function samplePoints(count){
+    const out=new Float32Array(count*3);let c=0;
+    while(c<count){
+      const roll=Math.random();
+      if(roll<0.82){
+        const u=Math.random(),th=Math.random()*Math.PI*2,r=prof(u);
+        out[c*3]=(0.5-u)*L;out[c*3+1]=Math.cos(th)*r*(Math.sin(th)<0?0.8:0.9);out[c*3+2]=Math.sin(th)*r;
+      }else if(roll<0.92){
+        const a=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random());
+        out[c*3]=-L/2-0.04+Math.cos(a)*0.2*rr;out[c*3+1]=Math.sin(a)*0.03*rr;out[c*3+2]=Math.sin(a)*0.95*rr;
+      }else{
+        const s=Math.random()<0.5?1:-1,a=Math.random()*Math.PI*2,rr=Math.sqrt(Math.random());
+        out[c*3]=(0.5-0.34)*L+Math.cos(a)*0.5*rr;out[c*3+1]=-0.32+Math.sin(a)*0.04*rr-0.2*rr;out[c*3+2]=s*(0.5+Math.sin(a)*0.17*rr);
+      }
+      c++;
+    }
+    return {pos:out,wave};
+  }
+  return {group,animate,samplePoints,wave,L};
+}
+
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(32,1,0.1,50);
+camera.position.set(0,2.4,6.9);camera.lookAt(0,0,0);
+scene.add(new THREE.AmbientLight(0xffffff,0.14));
+const dl=new THREE.DirectionalLight(0xffffff,0.5);dl.position.set(-2,4,3);scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xffffff,0.12);dl2.position.set(3,-2,-2);scene.add(dl2);
+const whale=makeWhale(THREE);scene.add(whale.group);
+const S=makeAscii(document.getElementById('c'),scene,camera);S.resize();
+const mouse={x:innerWidth*0.65,y:innerHeight*0.4,lx:innerWidth*0.65,ly:innerHeight*0.4,nx:0.3,ny:-0.1};
+addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;mouse.nx=e.clientX/innerWidth*2-1;mouse.ny=e.clientY/innerHeight*2-1;});
+const ripples=[];
+addEventListener('mousedown',e=>{ripples.push({x:e.clientX/S.cw,y:e.clientY/S.ch,r:0});});
+addEventListener('resize',()=>{S.resize();});
+/* marine snow: drifting dots, position changes only */
+const snow=[];for(let i=0;i<90;i++)snow.push({x:Math.random(),y:Math.random(),v:0.02+Math.random()*0.06,c:Math.random()<0.5?'#2b4f7a':'#35666b'});
+scrambleReveal(document.getElementById('t'),'수면 아래',3);
+let yaw=0,pitch=0,T0=performance.now();
+function frame(now){
+  const t=REDUCE?2.4:(now-T0)/1000;
+  const dt=REDUCE?0:0.016;
+  mouse.lx+=(mouse.x-mouse.lx)*0.18;mouse.ly+=(mouse.y-mouse.ly)*0.18;
+  const ty=REDUCE?0.35:mouse.nx*0.7,tp=REDUCE?-0.05:mouse.ny*0.35;
+  yaw+=(ty-yaw)*0.05;pitch+=(tp-pitch)*0.05;
+  whale.group.rotation.set(0,-yaw*0.9+0.0,-pitch*0.6);
+  whale.group.rotation.y=-yaw;
+  whale.group.position.y=Math.sin(t*0.7)*0.12;
+  whale.animate(t*1.1);
+  S.render();
+  S.clear();
+  const C=S.cols,R=S.rows;
+  /* snow */
+  for(const s of snow){const yy=((s.y+t*s.v)%1)*R,xx=(s.x+Math.sin(t*0.5+s.y*9)*0.01)*C;S.put(Math.floor(xx),Math.floor(yy),'.',s.c);}
+  /* lens */
+  const mx=mouse.lx/S.cw,my=mouse.ly/S.ch,LR=Math.max(7,Math.min(13,C/12)),asp=S.ch/S.cw;
+  for(let y=0;y<R;y++)for(let x=0;x<C;x++){
+    let sx=x,sy=y,inLens=false,ring=false;
+    const dx=x-mx,dy=(y-my)*asp,d=Math.hypot(dx,dy);
+    if(d<LR){
+      inLens=true;
+      const k=0.42+0.58*Math.pow(d/LR,2);
+      sx=Math.round(mx+dx*k);sy=Math.round(my+(y-my)*k);
+      if(d>LR-1.05)ring=true;
+    }
+    let a=0,l=0;
+    if(sx>=0&&sx<C&&sy>=0&&sy<R){const o=sy*C+sx;a=S.alp[o];l=S.lum[o];}
+    if(a>0.5){
+      let L=Math.min(1,l*1.08);
+      if(inLens)L=Math.min(1,L+0.18);
+      S.put(x,y,S.glyph(L),inLens?(L>0.7?PAL.pale:PAL.sageHi):S.whaleColor(L));
+    }else if(ring){S.put(x,y,'o',PAL.tealHi);}
+    else if(inLens){ if(((x+y)&1)===0)S.put(x,y,'.','#35666b'); }
+  }
+  /* click ripples: ring radius grows, ring is dropped when it reaches the limit */
+  for(let i=ripples.length-1;i>=0;i--){
+    const r=ripples[i];r.r+=0.9;
+    if(r.r>26){ripples.splice(i,1);continue;}
+    const n=Math.floor(r.r*5);
+    for(let k=0;k<n;k++){const ang=k/n*Math.PI*2;S.put(Math.round(r.x+Math.cos(ang)*r.r),Math.round(r.y+Math.sin(ang)*r.r/asp),'~',PAL.sage);}
+  }
+  if(!REDUCE)requestAnimationFrame(frame);
+}
+if(REDUCE){frame(0);addEventListener('resize',()=>frame(0));}else requestAnimationFrame(frame);
+</script></body></html>

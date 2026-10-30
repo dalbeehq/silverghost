@@ -1,0 +1,5 @@
+.audit/
+src/*-cut.png
+dist/
+research/
+cases/video/*/shots/

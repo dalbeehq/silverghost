@@ -1,0 +1,29 @@
+{
+  "name": "silver-ghost",
+  "title": "Phantom",
+  "title_ko": "은빛차",
+  "description": "1907년 롤스로이스 사진을 점 24000개로 그렸습니다. 왼쪽에서 날아와 서고, 마우스를 따라 돌고, 누르면 흩날립니다.",
+  "kind": "dots",
+  "deps": [],
+  "credit": "사진: 1907 Rolls-Royce 40/50 Silver Ghost, 퍼블릭 도메인, Wikimedia Commons",
+  "license": "MIT (코드). 사진은 퍼블릭 도메인",
+  "made": "2026-10-31",
+  "rejected": [
+    {
+      "file": "rejected/v1.html",
+      "poster": "rejected/v1.jpg",
+      "why": "깊이 값이 커서 원근 때문에 점이 퍼지고 바퀴살과 얼굴이 뭉개졌다"
+    },
+    {
+      "file": "rejected/v2.html",
+      "poster": "rejected/v2.jpg",
+      "why": "화면 모서리에 제목과 출처 글자가 있고 배경에 그라데이션이 있었다. 아폴로 이글에 준 달비 메모를 같은 점묘에 맞췄다"
+    }
+  ],
+  "curated": {
+    "keep": true,
+    "by": "dalbee",
+    "at": "2026-10-31",
+    "note": ""
+  }
+}
