@@ -1,6 +1,6 @@
 {
   "name": "silverghost",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Motion components made by AI, every one looked at by a human. Made By Opus 5.5, Curated by HUMAN.",
   "bin": {
     "silverghost": "bin/silverghost.js"
